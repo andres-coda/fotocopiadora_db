@@ -3326,21 +3326,260 @@ begin
 
     UPDATE libro_completo
         SET
-            autor       = CASE WHEN v_actualizar_autor       THEN autor       ELSE p_autor       END,
-            edicion     = CASE WHEN v_actualizar_edicion     THEN edicion     ELSE p_edicion     END,
-            anio        = CASE WHEN v_actualizar_anio        THEN anio        ELSE p_anio        END,
-            img         = CASE WHEN v_actualizar_img         THEN img         ELSE p_img         END,
-            descripcion = CASE WHEN v_actualizar_descripcion THEN descripcion ELSE p_descripcion END
+            autor       = CASE WHEN v_actualizar_autor       THEN p_autor       ELSE autor       END,
+            edicion     = CASE WHEN v_actualizar_edicion     THEN p_edicion     ELSE edicion     END,
+            anio        = CASE WHEN v_actualizar_anio        THEN p_anio        ELSE anio        END,
+            img         = CASE WHEN v_actualizar_img         THEN p_img         ELSE img         END,
+            descripcion = CASE WHEN v_actualizar_descripcion THEN p_descripcion ELSE descripcion END
         WHERE id = p_id_libro_completo
           AND (
-              NOT v_actualizar_autor OR
-              NOT v_actualizar_edicion OR
-              NOT v_actualizar_anio OR
-              NOT v_actualizar_img OR
-              NOT v_actualizar_descripcion
+              v_actualizar_autor OR
+              v_actualizar_edicion OR
+              v_actualizar_anio OR
+              v_actualizar_img OR
+              v_actualizar_descripcion
           );
 
     -- Retornar true si se ejecutó sin errores (incluye peticiones registradas)
+    return true;
+end $$;
+
+create or replace function _fc_verificar_actualizacion_libro(p_actual character varying, p_nuevo character varying) returns boolean
+    immutable
+    language plpgsql
+as
+$$
+DECLARE
+    v_actual_normalizado jsonb :=
+        NULLIF(to_jsonb(p_actual), '""'::jsonb);
+
+    v_nuevo_normalizado jsonb :=
+        NULLIF(to_jsonb(p_nuevo), '""'::jsonb);
+BEGIN
+    return v_actual_normalizado IS DISTINCT FROM v_nuevo_normalizado;
+END;
+$$;
+
+create or replace function fc_procesar_actualizacion_libro(p_id_libro_completo uuid, p_nombre character varying, p_materia character varying, p_editorial character varying, p_nivel character varying, p_componente jsonb) returns boolean
+    security definer
+    language plpgsql
+as
+$$
+declare
+    v_actual record;
+    v_id_solicitud uuid := null;
+    v_nombre boolean default  false;
+    v_materia boolean default false;
+    v_editorial boolean default false;
+    v_nivel boolean default false;
+    v_componentes boolean default false;
+begin
+    -- 1. Leer valores actuales de una sola vez
+    select nombre, nivel, materia, editorial, componentes
+    into v_actual
+    from vw_libro_completo
+    where id = p_id_libro_completo;
+
+    if not found then
+        raise exception 'libro_completo % no encontrado', p_id_libro_completo;
+    end if;
+
+    -- 2. Verificar y crear variables de actualización directa y peticiones
+
+
+    v_nombre := _fc_verificar_actualizacion_libro(v_actual.nombre, p_nombre);
+    v_materia := _fc_verificar_actualizacion_libro(v_actual.materia, p_materia);
+    v_editorial := _fc_verificar_actualizacion_libro(v_actual.editorial, p_editorial);
+    v_nivel := _fc_verificar_actualizacion_libro(v_actual.nivel, p_nivel);
+    if (string_agg(DISTINCT p_componente::text, ', '::text ORDER BY (p_componente::text)) is distinct from v_actual.componentes)
+        then v_componentes:= true;
+    end if;
+
+    -- 3. Crear solicitud si es necesario
+
+    if(v_nombre or v_materia or v_editorial or v_nivel or v_componentes) then
+        insert into solicitud(id_libro_completo, id_usuario, estado, id_empresa)
+            values (p_id_libro_completo, fc_usuario_actual(), 1, fc_empresa_actual())
+            returning id into v_id_solicitud;
+    end if;
+
+    -- 4. Crear petición si es necesario
+
+    IF (v_id_solicitud IS NOT NULL)
+        THEN
+        INSERT INTO peticion (
+            id_solicitud,
+            campo,
+            valor_anterior,
+            valor_nuevo,
+            observaciones,
+            estado
+        )
+        SELECT
+            v_id_solicitud,
+            p.campo,
+            p.valor_anterior,
+            p.valor_nuevo,
+            NULL,
+            1
+        FROM (
+            VALUES
+                (
+                    'nombre',
+                    COALESCE(to_jsonb(NULLIF(v_actual.nombre, '')), 'null'::jsonb),
+                    COALESCE(to_jsonb(NULLIF(p_nombre, '')), 'null'::jsonb),
+                    v_nombre
+                ),
+                (
+                    'editorial',
+                    COALESCE(to_jsonb(NULLIF(v_actual.editorial, '')), 'null'::jsonb),
+                    COALESCE(to_jsonb(NULLIF(p_editorial, '')), 'null'::jsonb),
+                    v_editorial
+                ),
+                (
+                    'materia',
+                    COALESCE(to_jsonb(NULLIF(v_actual.materia, '')), 'null'::jsonb),
+                    COALESCE(to_jsonb(NULLIF(p_materia, '')), 'null'::jsonb),
+                    v_materia
+                ),
+                (
+                    'nivel',
+                    COALESCE(to_jsonb(v_actual.nivel), 'null'::jsonb),
+                    COALESCE(to_jsonb(p_nivel), 'null'::jsonb),
+                    v_nivel
+                ),
+                (
+                    'componentes',
+                    COALESCE(to_jsonb(NULLIF(v_actual.componentes, '')), 'null'::jsonb),
+                    COALESCE(to_jsonb(NULLIF(p_componente, '')), 'null'::jsonb),
+                    v_componentes
+                )
+        ) AS p(campo, valor_anterior, valor_nuevo, crear)
+        WHERE p.crear;
+
+    END IF;
+
+    -- Retornar true si se ejecutó sin errores (incluye peticiones registradas)
+    return true;
+end $$;
+
+create or replace function fc_procesar_actualizacion_libro(p_id_libro_completo uuid, p_nombre character varying, p_materia character varying, p_editorial character varying, p_nivel character varying, p_componentes text[]) returns boolean
+    security definer
+    language plpgsql
+as
+$$
+declare
+    v_actual record;
+    v_id_solicitud uuid := null;
+    v_nombre boolean default  false;
+    v_materia boolean default false;
+    v_editorial boolean default false;
+    v_nivel boolean default false;
+    v_componentes boolean default false;
+    v_comp_actual text[];
+    v_comp_nuevos text[];
+begin
+    -- 1. Leer valores actuales de una sola vez (vista para campos simples)
+    select nombre, nivel, materia, editorial, componentes
+    into v_actual
+    from vw_libro_completo
+    where id = p_id_libro_completo;
+
+    if not found then
+        raise exception 'libro_completo % no encontrado', p_id_libro_completo;
+    end if;
+
+    -- 2. Leer componentes actuales por NOMBRE (para comparar con p_componentes que viene por nombre)
+    select array_agg(c.nombre order by c.nombre)
+    into v_comp_actual
+    from libro_componente lc
+    join componente c on c.id = lc.id_componente
+    where lc.id_libro = (select id_libro from libro_completo where id = p_id_libro_completo);
+
+    v_comp_actual := coalesce(v_comp_actual, '{}');
+
+    -- 3. Normalizar componentes entrantes: trim, quitar vacíos, dedup, ordenar
+    if p_componentes is not null then
+        v_comp_nuevos := array(
+            select distinct trim(elem)
+            from unnest(p_componentes) as elem
+            where trim(elem) <> ''
+            order by 1
+        );
+    else
+        v_comp_nuevos := '{}';
+    end if;
+
+    -- 4. Verificar cambios en campos simples (helper ya trata null='' como igual)
+    v_nombre := _fc_verificar_actualizacion_libro(v_actual.nombre, p_nombre);
+    v_materia := _fc_verificar_actualizacion_libro(v_actual.materia, p_materia);
+    v_editorial := _fc_verificar_actualizacion_libro(v_actual.editorial, p_editorial);
+    v_nivel := _fc_verificar_actualizacion_libro(v_actual.nivel, p_nivel);
+
+    -- 5. Verificar componentes: comparar arrays de nombres ordenados
+    v_componentes := v_comp_actual <> v_comp_nuevos;
+
+    -- 6. Crear solicitud si hay algún cambio
+    if (v_nombre or v_materia or v_editorial or v_nivel or v_componentes) then
+        insert into solicitud(id_libro_completo, id_usuario, estado, id_empresa)
+            values (p_id_libro_completo, fc_usuario_actual(), 1, fc_empresa_actual())
+            returning id into v_id_solicitud;
+    end if;
+
+    -- 7. Crear peticiones por cada campo que cambió
+    IF v_id_solicitud IS NOT NULL THEN
+        INSERT INTO peticion (
+            id_solicitud,
+            campo,
+            valor_anterior,
+            valor_nuevo,
+            observaciones,
+            estado
+        )
+        SELECT
+            v_id_solicitud,
+            p.campo,
+            p.valor_anterior,
+            p.valor_nuevo,
+            NULL,
+            1
+        FROM (
+            VALUES
+                (
+                    'nombre',
+                    COALESCE(to_jsonb(NULLIF(v_actual.nombre, '')), 'null'::jsonb),
+                    COALESCE(to_jsonb(NULLIF(p_nombre, '')), 'null'::jsonb),
+                    v_nombre
+                ),
+                (
+                    'editorial',
+                    COALESCE(to_jsonb(NULLIF(v_actual.editorial, '')), 'null'::jsonb),
+                    COALESCE(to_jsonb(NULLIF(p_editorial, '')), 'null'::jsonb),
+                    v_editorial
+                ),
+                (
+                    'materia',
+                    COALESCE(to_jsonb(NULLIF(v_actual.materia, '')), 'null'::jsonb),
+                    COALESCE(to_jsonb(NULLIF(p_materia, '')), 'null'::jsonb),
+                    v_materia
+                ),
+                (
+                    'nivel',
+                    COALESCE(to_jsonb(v_actual.nivel), 'null'::jsonb),
+                    COALESCE(to_jsonb(p_nivel), 'null'::jsonb),
+                    v_nivel
+                ),
+                (
+                    'componentes',
+                    to_jsonb(v_comp_actual),
+                    to_jsonb(v_comp_nuevos),
+                    v_componentes
+                )
+        ) AS p(campo, valor_anterior, valor_nuevo, crear)
+        WHERE p.crear;
+    END IF;
+
+    -- 8. Retornar true si se ejecutó sin errores (excepción si falla)
     return true;
 end $$;
 
