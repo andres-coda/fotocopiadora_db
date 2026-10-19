@@ -168,33 +168,19 @@ FROM pedido_item pi
 
 grant select on vw_cambio_estado to app_role;
 
-create or replace view vw_empresa_completa
-            (id, fecha_creacion, fecha_actualizacion, deleted, nombre, email, telefono, fecha_entrega, id_dato_cobro,
-             id_msj_pedido_tomado, id_msj_pedido_retirado, id_sede, msj_retiro, msj_envio, hora_entrega,
-             dato_cobro_nombre, dato_cobro_mensaje, mensaje_nombre, mensaje, sede)
-as
-SELECT e.id,
-       e.fecha_creacion,
-       c.fecha_actualizacion,
-       e.deleted,
-       e.nombre,
-       e.email,
-       e.telefono,
-       c.fecha_entrega,
-       c.id_dato_cobro,
-       c.id_msj_pedido_tomado,
-       c.id_msj_pedido_retirado,
-       c.id_sede,
-       c.msj_retiro,
-       c.msj_envio,
-       c.hora_entrega,
-       dc.nombre  AS dato_cobro_nombre,
-       dc.mensaje AS dato_cobro_mensaje,
-       m.nombre   AS mensaje_nombre,
-       m.mensaje,
-       s.nombre   AS sede
-FROM empresa e
-         JOIN configuraciones c ON c.id_empresa = e.id
-         JOIN dato_cobro dc ON dc.id = c.id_dato_cobro
-         JOIN mensaje m ON m.id = c.id_msj_pedido_tomado OR m.id = c.id_msj_pedido_retirado
-         JOIN sede s ON s.id = c.id_sede;
+drop view if exists vw_empresa_completa;
+
+create or replace view vw_empresa_completa  as
+    select
+        e.id, e.fecha_creacion, e.fecha_actualizacion, e.deleted, e.nombre, e.email, e.telefono,
+        c.fecha_entrega, c.id_dato_cobro, c.id_msj_pedido_tomado, c.id_msj_pedido_retirado, c.id_sede, c.msj_retiro, c.msj_envio, c.hora_entrega,
+        dc.nombre as dato_cobro_nombre, dc.mensaje as dato_cobro_mensaje,
+        mr.nombre as retirado_nombre, mr.mensaje as retirado_mensaje,
+        mt.nombre as tomado_nombre, mt.mensaje as tomado_mensaje,
+        s.nombre as sede, c.fecha_actualizacion as config_fecha_actualizacion
+    from empresa e
+    left join configuraciones c on c.id_empresa = e.id
+    left join dato_cobro dc on dc.id = c.id_dato_cobro
+    left join mensaje mr on mr.id = c.id_msj_pedido_retirado
+    left join mensaje mt on mt.id = c.id_msj_pedido_tomado
+    left join sede s on s.id = c.id_sede;
