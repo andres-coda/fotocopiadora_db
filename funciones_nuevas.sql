@@ -6,55 +6,55 @@ DECLARE
     v_resultado jsonb;
 BEGIN
     SELECT jsonb_build_object(
-        'id', p.id,
-        'fechaCreacion', p.fecha_creacion,
-        'fechaActualizacion', p.fecha_actualizacion,
-        'fechaEntrega', p.fecha_entrega,
-        'importeTotal', p.importe_total,
-        'sena', p.sena,
-        'archivos', p.archivos,
-        'anillados', p.anillados,
-        'estado', p.estado,
+        'id', vp.id,
+        'fechaCreacion', vp.fecha_creacion,
+        'fechaActualizacion', vp.fecha_actualizacion,
+        'fechaEntrega', vp.fecha_entrega,
+        'importeTotal', vp.importe_total,
+        'sena', vp.sena,
+        'archivos', vp.archivos,
+        'anillados', vp.anillados,
+        'estado', vp.estado,
         'cliente', jsonb_build_object(
-            'id', c.id,
-            'nombre', c.nombre,
-            'telefono', c.telefono,
-            'email', c.email
+            'id', vp.id_cliente,
+            'nombre', vp.nombre,
+            'telefono', vp.telefono,
+            'email', vp.email
         ),
         'items',
         (
             SELECT jsonb_agg(
                 jsonb_build_object(
-                    'id', pi.id,
-                    'cantidad', pi.cantidad,
-                    'detalles', pi.detalles,
-                    'estado', pi.estado,
-                    'idLibro', pi.id_libro,
-                    'idSede', pi.id_sede,
-                    'especificaciones',
-                    COALESCE(
-                        (
-                            SELECT jsonb_agg(e.nombre ORDER BY e.nombre)
-                            FROM pedido_item_especificacion pie
-                            JOIN especificacion e
-                                ON e.id = pie.id_especificacion
-                            WHERE pie.id_pedido = pi.id_pedido
-                              AND pie.nro_item = pi.id
-                        ),
-                        '[]'::jsonb
-                    )
+                    'id', vpi.nro_pedido,
+                    'cantidad', vpi.cantidad,
+                    'detalles', vpi.detalles,
+                    'estado', vpi.estado,
+                    'sede', jsonb_build_object(
+                        'id', vpi.id_sede,
+                        'nombre', vpi.sede
+                    ),
+                    'libro', jsonb_build_object(
+                        'id', vpi.id_libro,
+                        'nombre', vpi.nombre,
+                        'descripcion', vpi.descripcion,
+                        'edicion', vpi.edicion,
+                        'anio', vpi.anio,
+                        'nivel', vpi.nivel,
+                        'componentes', vpi.componentes,
+                        'materia', vpi.materia,
+                        'editorial', vpi.editorial
+                    ),
+                    'especificaciones', vpi.especificaciones
                 )
-                ORDER BY pi.id
+                ORDER BY vpi.nro_pedido
             )
-            FROM pedido_item pi
-            WHERE pi.id_pedido = p.id
+            FROM vw_pedidos_item vpi
+            WHERE vpi.id_pedido = vp.id
         )
     )
     INTO v_resultado
-    FROM pedido p
-    JOIN cliente c
-      ON c.id = p.id_cliente
-    WHERE p.id = p_id_pedido;
+    FROM vw_pedidos vp
+    WHERE vp.id = p_id_pedido;
 
     RETURN v_resultado;
 END;

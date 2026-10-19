@@ -96,7 +96,8 @@ alter table usuario
 
 alter table usuario
     add constraint fk_empresa
-        foreign key (id_empresa) references empresa;
+        foreign key (id_empresa) references empresa
+            on delete cascade;
 
 alter table usuario
     add constraint ch_tipos_rol
@@ -228,7 +229,8 @@ alter table libro
 
 alter table libro
     add constraint fk_id_materia
-        foreign key (id_materia) references materia;
+        foreign key (id_materia) references materia
+            on delete cascade;
 
 create policy pc_libro_update on libro
     as permissive
@@ -305,7 +307,8 @@ alter table libro_componente
 
 alter table libro_componente
     add constraint fk_libro_componente_componente
-        foreign key (id_componente) references componente;
+        foreign key (id_componente) references componente
+            on delete cascade;
 
 create policy pc_libro_componente_update on libro_componente
     as permissive
@@ -347,7 +350,8 @@ alter table libro_empresa
 
 alter table libro_empresa
     add constraint fk_libro_empresa_empresa
-        foreign key (id_empresa) references empresa;
+        foreign key (id_empresa) references empresa
+            on delete cascade;
 
 alter table libro_empresa
     add constraint ch_cantidad_pg_positiva
@@ -382,7 +386,8 @@ alter table precio_empresa
 
 alter table precio_empresa
     add constraint fk_precio_empresa
-        foreign key (id_empresa) references empresa;
+        foreign key (id_empresa) references empresa
+            on delete cascade;
 
 alter table precio_empresa
     add constraint ch_importe_positivo
@@ -416,7 +421,8 @@ alter table propuesta
 
 alter table propuesta
     add constraint fk_propuesta_empresa
-        foreign key (id_empresa) references empresa;
+        foreign key (id_empresa) references empresa
+            on delete cascade;
 
 create policy pc_propuesta_select on propuesta
     as permissive
@@ -454,11 +460,13 @@ alter table propuesta_libro_empresa
 
 alter table propuesta_libro_empresa
     add constraint fk_propuesta
-        foreign key (id_propuesta) references propuesta;
+        foreign key (id_propuesta) references propuesta
+            on delete cascade;
 
 alter table propuesta_libro_empresa
     add constraint fk_libro_empresa
-        foreign key (id_libro, id_empresa) references libro_empresa (id_libro, id_empresa);
+        foreign key (id_empresa, id_libro) references libro_empresa
+            on delete cascade;
 
 create policy pc_propuesta_libro_empresa_all on propuesta_libro_empresa
     as permissive
@@ -494,7 +502,8 @@ alter table cliente
 
 alter table cliente
     add constraint fk_empresa_cliente
-        foreign key (id_empresa) references empresa;
+        foreign key (id_empresa) references empresa
+            on delete cascade;
 
 alter table cliente
     add constraint chk_cliente_contacto_minimo
@@ -576,7 +585,8 @@ alter table resumen_cliente
 
 alter table resumen_cliente
     add constraint fk_cliente_resumen
-        foreign key (id_cliente) references cliente;
+        foreign key (id_cliente) references cliente
+            on delete cascade;
 
 alter table resumen_cliente
     add constraint ck_resumen_cliente_no_negativo
@@ -587,7 +597,7 @@ create policy pc_resumen_cliente_select on resumen_cliente
     for select
     using (fc_usuario_actual() IS NOT NULL);
 
-grant delete, insert, select, update on resumen_cliente to app_role;
+grant select on resumen_cliente to app_role;
 
 create table if not exists resumen_libro
 (
@@ -605,7 +615,8 @@ alter table resumen_libro
 
 alter table resumen_libro
     add constraint fk_resumen_libro_libro
-        foreign key (id_empresa, id_libro) references libro_empresa;
+        foreign key (id_empresa, id_libro) references libro_empresa
+            on delete cascade;
 
 alter table resumen_libro
     add constraint ck_resumen_libro_no_negativo
@@ -616,7 +627,7 @@ create policy pc_resumen_libro_select on resumen_libro
     for select
     using (id_empresa = fc_empresa_actual());
 
-grant delete, insert, select, update on resumen_libro to app_role;
+grant select on resumen_libro to app_role;
 
 create table if not exists stock
 (
@@ -629,6 +640,11 @@ create table if not exists stock
 alter table stock
     add constraint pk_stock
         primary key (id_empresa, id_libro);
+
+alter table stock
+    add constraint fk_stock_libro_empresa
+        foreign key (id_empresa, id_libro) references libro_empresa
+            on delete cascade;
 
 alter table stock
     add constraint ch_stock_positiva
@@ -710,11 +726,13 @@ alter table pedido
 
 alter table pedido
     add constraint fk_cliente_pedido
-        foreign key (id_cliente) references cliente;
+        foreign key (id_cliente) references cliente
+            on delete cascade;
 
 alter table pedido
     add constraint fk_empresa_pedido
-        foreign key (id_empresa) references empresa;
+        foreign key (id_empresa) references empresa
+            on delete cascade;
 
 alter table pedido
     add constraint ck_estado_pedido
@@ -769,12 +787,19 @@ alter table pedido_item
         primary key (id_pedido, id);
 
 alter table pedido_item
-    add constraint fk_pedido
-        foreign key (id_pedido) references pedido;
+    add constraint fk_item_pedido
+        foreign key (id_pedido) references pedido
+            on delete cascade;
 
 alter table pedido_item
-    add constraint fk_sede_item
-        foreign key (id_sede) references sede;
+    add constraint fk_item_libro_empresa
+        foreign key (id_empresa, id_libro) references libro_empresa
+            on delete cascade;
+
+alter table pedido_item
+    add constraint fk_item_sede
+        foreign key (id_sede) references sede
+            on delete cascade;
 
 alter table pedido_item
     add constraint ck_estado_pedido_item
@@ -805,11 +830,13 @@ alter table pedido_item_especificacion
 
 alter table pedido_item_especificacion
     add constraint fk_especificacion
-        foreign key (id_especificacion) references especificacion;
+        foreign key (id_especificacion) references especificacion
+            on delete cascade;
 
 alter table pedido_item_especificacion
-    add constraint fk_pedido_items
-        foreign key (id_pedido, nro_item) references pedido_item;
+    add constraint fk_pie_pedido_items
+        foreign key (id_pedido, nro_item) references pedido_item
+            on delete cascade;
 
 create policy pedido_item_especificacion_all on pedido_item_especificacion
     as permissive
@@ -921,11 +948,13 @@ alter table libro_completo
 
 alter table libro_componente
     add constraint fk_libro_componente_libro
-        foreign key (id_libro) references libro_completo;
+        foreign key (id_libro) references libro_completo
+            on delete cascade;
 
 alter table libro_empresa
     add constraint fk_libro_empresa_libro
-        foreign key (id_libro) references libro_completo;
+        foreign key (id_libro) references libro_completo
+            on delete cascade;
 
 alter table libro_completo
     add constraint fk_libro_completo_nivel
@@ -933,7 +962,8 @@ alter table libro_completo
 
 alter table libro_completo
     add constraint fk_libro_completo_libro
-        foreign key (id_libro) references libro;
+        foreign key (id_libro) references libro
+            on delete cascade;
 
 create policy pc_libro_completo_select on libro_completo
     as permissive
@@ -1067,6 +1097,8 @@ create policy pc_solicitud_update on solicitud
     using fc_es_super_admin()
 with check fc_es_super_admin();
 
+grant delete, insert, references, select, trigger, truncate, update on solicitud to app_role;
+
 create table if not exists peticion
 (
     id             uuid    default gen_random_uuid() not null,
@@ -1093,7 +1125,7 @@ alter table peticion
 alter table peticion
     add constraint chk_peticion_campo
         check ((campo)::text = ANY
-               ((ARRAY ['anio'::character varying, 'autor'::character varying, 'img'::character varying, 'edicion'::character varying, 'descripcion'::character varying, 'nombre'::character varying, 'materia'::character varying, 'editorial'::character varying])::text[]));
+               (ARRAY [('anio'::character varying)::text, ('autor'::character varying)::text, ('img'::character varying)::text, ('edicion'::character varying)::text, ('descripcion'::character varying)::text, ('nombre'::character varying)::text, ('materia'::character varying)::text, ('nivel'::character varying)::text, ('componentes'::character varying)::text, ('editorial'::character varying)::text]));
 
 create policy pc_peticion_update on peticion
     as permissive
@@ -1124,6 +1156,147 @@ create policy pc_peticion_delete on peticion
                                                         FROM solicitud
                                                         WHERE (solicitud.id = peticion.id_solicitud)
                                                         LIMIT 1)));
+
+grant delete, insert, references, select, trigger, truncate, update on peticion to app_role;
+
+create table if not exists mensaje
+(
+    id         uuid default gen_random_uuid() not null,
+    id_empresa uuid                           not null,
+    nombre     varchar(50)                    not null,
+    mensaje    text,
+    favorito   boolean default false          not null
+);
+
+alter table mensaje
+    add constraint pk_mensaje
+        primary key (id);
+
+alter table mensaje
+    add constraint uq_mensaje_nombre
+        unique (id_empresa, nombre);
+
+alter table mensaje
+    add constraint fk_mensaje_empresa
+        foreign key (id_empresa) references empresa
+            on delete cascade;
+
+create policy pc_msj_select on mensaje
+    as permissive
+    for select
+    using (fc_es_super_admin() OR fc_es_empresa_actual(id_empresa));
+
+create policy pc_msj_insert on mensaje
+    as permissive
+    for insert
+    with check fc_es_empresa_actual(id_empresa);
+
+create policy pc_msj_delete on mensaje
+    as permissive
+    for delete
+    using (fc_es_empresa_actual(id_empresa) AND fc_es_admin());
+
+create policy pc_msj_update on mensaje
+    as permissive
+    for update
+    using fc_es_empresa_actual(id_empresa)
+with check fc_es_empresa_actual(id_empresa);
+
+create table if not exists dato_cobro
+(
+    id         uuid default gen_random_uuid() not null,
+    id_empresa uuid                           not null,
+    nombre     varchar(50)                    not null,
+    mensaje    text
+);
+
+alter table dato_cobro
+    add constraint pk_dato_cobro
+        primary key (id);
+
+alter table dato_cobro
+    add constraint uq_dato_cobro_nombre
+        unique (id_empresa, nombre);
+
+alter table dato_cobro
+    add constraint fk_dato_cobro_empresa
+        foreign key (id_empresa) references empresa
+            on delete cascade;
+
+create policy pc_dato_cobro_select on dato_cobro
+    as permissive
+    for select
+    using (fc_es_super_admin() OR fc_es_empresa_actual(id_empresa));
+
+create policy pc_dato_cobro_insert on dato_cobro
+    as permissive
+    for insert
+    with check (fc_es_empresa_actual(id_empresa) AND fc_es_admin());
+
+create policy pc_dato_cobro_delete on dato_cobro
+    as permissive
+    for delete
+    using (fc_es_empresa_actual(id_empresa) AND fc_es_admin());
+
+create policy pc_dato_cobro_update on dato_cobro
+    as permissive
+    for update
+    using (fc_es_empresa_actual(id_empresa) AND fc_es_admin())
+    with check (fc_es_empresa_actual(id_empresa) AND fc_es_admin());
+
+create table if not exists configuraciones
+(
+    id_empresa             uuid                                not null,
+    fecha_actualizacion    timestamp default CURRENT_TIMESTAMP not null,
+    fecha_entrega          date,
+    id_dato_cobro          uuid,
+    id_msj_pedido_tomado   uuid,
+    id_msj_pedido_retirado uuid,
+    id_sede                uuid,
+    msj_retiro             boolean   default false,
+    msj_envio              boolean   default false,
+    hora_entrega           smallint
+);
+
+alter table configuraciones
+    add constraint pk_config
+        primary key (id_empresa);
+
+alter table configuraciones
+    add constraint fk_config_sede
+        foreign key (id_sede) references sede;
+
+alter table configuraciones
+    add constraint fk_config_dato_cobro
+        foreign key (id_dato_cobro) references dato_cobro;
+
+alter table configuraciones
+    add constraint fk_config_mensaje_tomado
+        foreign key (id_msj_pedido_tomado) references mensaje;
+
+alter table configuraciones
+    add constraint fk_config_mensaje_retirado
+        foreign key (id_msj_pedido_retirado) references mensaje;
+
+alter table configuraciones
+    add constraint fk_config_empresa
+        foreign key (id_empresa) references empresa
+            on delete cascade;
+
+alter table configuraciones
+    add constraint chk_config_hora
+        check ((hora_entrega >= 0) AND (hora_entrega <= 23));
+
+create policy pc_config_select on configuraciones
+    as permissive
+    for select
+    using (fc_es_super_admin() OR fc_es_empresa_actual(id_empresa));
+
+create policy pc_config_update on configuraciones
+    as permissive
+    for update
+    using fc_es_empresa_actual(id_empresa)
+with check fc_es_empresa_actual(id_empresa);
 
 create or replace view vw_cliente
             (id, nombre, email, telefono, fecha_creacion, fecha_actualizacion, deleted, pendiente, retirado, listo,
@@ -1175,6 +1348,8 @@ FROM libro_componente lc
          JOIN componente c ON c.id = lc.id_componente
 GROUP BY lc.id_libro;
 
+grant select on vw_componentes to app_role;
+
 create or replace view vw_libro_busqueda
             (id, nombre, descripcion, edicion, autor, anio, img, nivel, componentes, cantidad_pg, cantidad_adhesivo,
              especificaciones_defecto, materia, editorial, pendiente, listo, retirado, cancelado, id_empresa,
@@ -1214,6 +1389,8 @@ FROM libro_empresa le
          LEFT JOIN resumen_libro rl ON rl.id_libro = le.id_libro
          LEFT JOIN stock s ON s.id_libro = le.id_libro;
 
+grant select on vw_libro_busqueda to app_role;
+
 create or replace view vw_libro_componentes(id_libro, componentes) as
 SELECT lc.id_libro,
        string_agg(DISTINCT c.nombre::text, ', '::text) AS componentes
@@ -1240,6 +1417,8 @@ FROM libro_completo lc
          LEFT JOIN materia m ON m.id = l.id_materia
          LEFT JOIN editorial e ON e.id = l.id_editorial
          LEFT JOIN vw_componentes vw_c ON vw_c.id_libro = lc.id;
+
+grant select on vw_libro_completo to app_role;
 
 create or replace view vw_propuesta
             (id_libro, id_propuesta, nombre_propuesta, fecha_creacion, fecha_actualizacion, deleted_propuesta, nombre,
@@ -1272,6 +1451,8 @@ FROM propuesta_libro_empresa ple
          LEFT JOIN vw_libro_busqueda vwlb ON vwlb.id = ple.id_libro
          LEFT JOIN propuesta p ON p.id = ple.id_propuesta;
 
+grant select on vw_propuesta to app_role;
+
 create or replace view vw_especificaciones(nro_item, id_pedido, especificaciones) as
 SELECT pi.nro_item,
        pi.id_pedido,
@@ -1279,6 +1460,8 @@ SELECT pi.nro_item,
 FROM pedido_item_especificacion pi
          JOIN especificacion e ON e.id = pi.id_especificacion
 GROUP BY pi.nro_item, pi.id_pedido;
+
+grant select on vw_especificaciones to app_role;
 
 create or replace view vw_pedidos_item
             (id_pedido, nro_pedido, cantidad, detalles, estado, especificaciones, cantidad_pg, cantidad_adhesivo,
@@ -1327,6 +1510,8 @@ FROM pedido_item pi
          JOIN vw_pedidos vw_p ON vw_p.id = pi.id_pedido
          LEFT JOIN sede s ON s.id = pi.id_sede;
 
+grant select on vw_pedidos_item to app_role;
+
 create or replace view vw_pedido_libro
             (id_pedido, nro_pedido, cantidad, detalles, estado, id_libro, especificaciones, fecha_creacion,
              fecha_entrega, importe_total, sena, anillados, archivos, estado_pedido, sede, id_sede, telefono, email,
@@ -1358,6 +1543,8 @@ FROM pedido_item pi
          JOIN cliente c ON c.id = p.id_cliente
          LEFT JOIN sede s ON s.id = pi.id_sede;
 
+grant select on vw_pedido_libro to app_role;
+
 create or replace view vw_libro_nombre(id, nombre, deleted, id_materia, materia, id_editorial, editorial) as
 SELECT l.id,
        l.nombre,
@@ -1369,6 +1556,8 @@ SELECT l.id,
 FROM libro l
          LEFT JOIN materia m ON l.id_materia = m.id
          LEFT JOIN editorial e ON e.id = l.id_editorial;
+
+grant select on vw_libro_nombre to app_role;
 
 create or replace view vw_cambio_sede
             (fecha_actualizacion, id_pedido, id, id_libro, id_empresa, id_sede, id_cliente, sede) as
@@ -1383,6 +1572,8 @@ SELECT pi.fecha_actualizacion,
 FROM pedido_item pi
          JOIN pedido p ON p.id = pi.id_pedido
          JOIN sede s ON pi.id_sede = s.id;
+
+grant select on vw_cambio_sede to app_role;
 
 create or replace view vw_cambio_estado_pedido
             (id, estado, fecha_actualizacion, id_cliente, retirado, listo, pendiente, cancelado, id_libro, id_empresa,
@@ -1407,6 +1598,8 @@ FROM pedido p
          JOIN pedido_item pi ON pi.id_pedido = p.id
          JOIN resumen_libro rl ON rl.id_libro = pi.id_libro AND rl.id_empresa = pi.id_empresa
          JOIN resumen_cliente rc ON rc.id_cliente = p.id_cliente;
+
+grant select on vw_cambio_estado_pedido to app_role;
 
 create or replace view vw_cambio_estado
             (estado, fecha_actualizacion, id, nro_pedido, id_libro, id_empresa, pendiente, listo, cancelado, retirado,
@@ -1434,6 +1627,39 @@ FROM pedido_item pi
          JOIN resumen_cliente rc ON rc.id_cliente = p.id_cliente
          JOIN stock s ON s.id_libro = pi.id_libro AND s.id_empresa = pi.id_empresa
          JOIN resumen_libro rl ON rl.id_libro = pi.id_libro AND rl.id_empresa = pi.id_empresa;
+
+grant select on vw_cambio_estado to app_role;
+
+create or replace view vw_empresa_completa
+            (id, fecha_creacion, fecha_actualizacion, deleted, nombre, email, telefono, fecha_entrega, id_dato_cobro,
+             id_msj_pedido_tomado, id_msj_pedido_retirado, id_sede, msj_retiro, msj_envio, hora_entrega,
+             dato_cobro_nombre, dato_cobro_mensaje, mensaje_nombre, mensaje, sede)
+as
+SELECT e.id,
+       e.fecha_creacion,
+       c.fecha_actualizacion,
+       e.deleted,
+       e.nombre,
+       e.email,
+       e.telefono,
+       c.fecha_entrega,
+       c.id_dato_cobro,
+       c.id_msj_pedido_tomado,
+       c.id_msj_pedido_retirado,
+       c.id_sede,
+       c.msj_retiro,
+       c.msj_envio,
+       c.hora_entrega,
+       dc.nombre  AS dato_cobro_nombre,
+       dc.mensaje AS dato_cobro_mensaje,
+       m.nombre   AS mensaje_nombre,
+       m.mensaje,
+       s.nombre   AS sede
+FROM empresa e
+         JOIN configuraciones c ON c.id_empresa = e.id
+         JOIN dato_cobro dc ON dc.id = c.id_dato_cobro
+         JOIN mensaje m ON m.id = c.id_msj_pedido_tomado OR m.id = c.id_msj_pedido_retirado
+         JOIN sede s ON s.id = c.id_sede;
 
 create or replace function fc_usuario_actual() returns uuid
     stable
@@ -1552,6 +1778,12 @@ execute procedure fc_actualizar_fecha_actualizacion();
 create trigger tr_nivel_fecha_actualizacion
     before update
     on nivel
+    for each row
+execute procedure fc_actualizar_fecha_actualizacion();
+
+create trigger tr_config_fecha_actualizacion
+    before update
+    on configuraciones
     for each row
 execute procedure fc_actualizar_fecha_actualizacion();
 
@@ -1780,6 +2012,12 @@ create trigger tr_libro_completo_auditoria
     on libro_completo
     for each row
 execute procedure fc_auditoria('id');
+
+create trigger tr_config_auditoria
+    after insert or update or delete
+    on configuraciones
+    for each row
+execute procedure fc_auditoria('id_empresa');
 
 grant execute on function fc_auditoria() to app_role;
 
@@ -2564,55 +2802,56 @@ DECLARE
     v_resultado jsonb;
 BEGIN
     SELECT jsonb_build_object(
-        'id', p.id,
-        'fechaCreacion', p.fecha_creacion,
-        'fechaActualizacion', p.fecha_actualizacion,
-        'fechaEntrega', p.fecha_entrega,
-        'importeTotal', p.importe_total,
-        'sena', p.sena,
-        'archivos', p.archivos,
-        'anillados', p.anillados,
-        'estado', p.estado,
+        'id', vp.id,
+        'fechaCreacion', vp.fecha_creacion,
+        'fechaActualizacion', vp.fecha_actualizacion,
+        'fechaEntrega', vp.fecha_entrega,
+        'importeTotal', vp.importe_total,
+        'sena', vp.sena,
+        'archivos', vp.archivos,
+        'anillados', vp.anillados,
+        'estado', vp.estado,
         'cliente', jsonb_build_object(
-            'id', c.id,
-            'nombre', c.nombre,
-            'telefono', c.telefono,
-            'email', c.email
+            'id', vp.id_cliente,
+            'nombre', vp.nombre,
+            'telefono', vp.telefono,
+            'email', vp.email
         ),
         'items',
         (
             SELECT jsonb_agg(
                 jsonb_build_object(
-                    'id', pi.id,
-                    'cantidad', pi.cantidad,
-                    'detalles', pi.detalles,
-                    'estado', pi.estado,
-                    'idLibro', pi.id_libro,
-                    'idSede', pi.id_sede,
-                    'especificaciones',
-                    COALESCE(
-                        (
-                            SELECT jsonb_agg(e.nombre ORDER BY e.nombre)
-                            FROM pedido_item_especificacion pie
-                            JOIN especificacion e
-                                ON e.id = pie.id_especificacion
-                            WHERE pie.id_pedido = pi.id_pedido
-                              AND pie.nro_item = pi.id
-                        ),
-                        '[]'::jsonb
-                    )
+                    'id', vpi.nro_pedido,
+                    'cantidad', vpi.cantidad,
+                    'detalles', vpi.detalles,
+                    'estado', vpi.estado,
+                    'sede', jsonb_build_object(
+                        'id', vpi.id_sede,
+                        'nombre', vpi.sede
+                    ),
+                    'libro', jsonb_build_object(
+                        'id', vpi.id_libro,
+                        'nombre', vpi.nombre,
+                        'descripcion', vpi.descripcion,
+                        'edicion', vpi.edicion,
+                        'anio', vpi.anio,
+                        'nivel', vpi.nivel,
+                        'componentes', vpi.componentes,
+                        'materia', vpi.materia,
+                        'id_materia', vpi.id_materia,
+                        'editorial', vpi.editorial
+                    ),
+                    'especificaciones', vpi.especificaciones
                 )
-                ORDER BY pi.id
+                ORDER BY vpi.nro_pedido
             )
-            FROM pedido_item pi
-            WHERE pi.id_pedido = p.id
+            FROM vw_pedidos_item vpi
+            WHERE vpi.id_pedido = vp.id
         )
     )
     INTO v_resultado
-    FROM pedido p
-    JOIN cliente c
-      ON c.id = p.id_cliente
-    WHERE p.id = p_id_pedido;
+    FROM vw_pedidos vp
+    WHERE vp.id = p_id_pedido;
 
     RETURN v_resultado;
 END;
@@ -2769,6 +3008,123 @@ BEGIN
     'datos', COALESCE(v_resultado, '[]'::jsonb)
   );
 END;
+$$;
+
+create or replace function uuid_nil() returns uuid
+    immutable
+    strict
+    parallel safe
+    language c
+as
+$$
+begin
+-- missing source code
+end;
+$$;
+
+create or replace function uuid_ns_dns() returns uuid
+    immutable
+    strict
+    parallel safe
+    language c
+as
+$$
+begin
+-- missing source code
+end;
+$$;
+
+create or replace function uuid_ns_url() returns uuid
+    immutable
+    strict
+    parallel safe
+    language c
+as
+$$
+begin
+-- missing source code
+end;
+$$;
+
+create or replace function uuid_ns_oid() returns uuid
+    immutable
+    strict
+    parallel safe
+    language c
+as
+$$
+begin
+-- missing source code
+end;
+$$;
+
+create or replace function uuid_ns_x500() returns uuid
+    immutable
+    strict
+    parallel safe
+    language c
+as
+$$
+begin
+-- missing source code
+end;
+$$;
+
+create or replace function uuid_generate_v1() returns uuid
+    strict
+    parallel safe
+    language c
+as
+$$
+begin
+-- missing source code
+end;
+$$;
+
+create or replace function uuid_generate_v1mc() returns uuid
+    strict
+    parallel safe
+    language c
+as
+$$
+begin
+-- missing source code
+end;
+$$;
+
+create or replace function uuid_generate_v3(namespace uuid, name text) returns uuid
+    immutable
+    strict
+    parallel safe
+    language c
+as
+$$
+begin
+-- missing source code
+end;
+$$;
+
+create or replace function uuid_generate_v4() returns uuid
+    strict
+    parallel safe
+    language c
+as
+$$
+begin
+-- missing source code
+end;
+$$;
+
+create or replace function uuid_generate_v5(namespace uuid, name text) returns uuid
+    immutable
+    strict
+    parallel safe
+    language c
+as
+$$
+begin
+-- missing source code
+end;
 $$;
 
 create or replace function fc_busqueda_cliente(p_busqueda text, p_limite integer DEFAULT 50, p_offset integer DEFAULT 0, p_deleted boolean DEFAULT false)
@@ -3150,6 +3506,8 @@ begin
     end loop;
 end $$;
 
+grant execute on function fc_verificar_peticiones_libro_relacionados(uuid, uuid, uuid, jsonb, uuid) to app_role;
+
 create or replace function _fc_solicitud_registrar_peticion(p_id_solicitud uuid, p_id_libro_completo uuid, p_campo character varying, p_valor_actual jsonb, p_valor_nuevo jsonb)
     returns TABLE(id_solicitud uuid, id_peticion uuid)
     security definer
@@ -3360,109 +3718,6 @@ BEGIN
 END;
 $$;
 
-create or replace function fc_procesar_actualizacion_libro(p_id_libro_completo uuid, p_nombre character varying, p_materia character varying, p_editorial character varying, p_nivel character varying, p_componente jsonb) returns boolean
-    security definer
-    language plpgsql
-as
-$$
-declare
-    v_actual record;
-    v_id_solicitud uuid := null;
-    v_nombre boolean default  false;
-    v_materia boolean default false;
-    v_editorial boolean default false;
-    v_nivel boolean default false;
-    v_componentes boolean default false;
-begin
-    -- 1. Leer valores actuales de una sola vez
-    select nombre, nivel, materia, editorial, componentes
-    into v_actual
-    from vw_libro_completo
-    where id = p_id_libro_completo;
-
-    if not found then
-        raise exception 'libro_completo % no encontrado', p_id_libro_completo;
-    end if;
-
-    -- 2. Verificar y crear variables de actualización directa y peticiones
-
-
-    v_nombre := _fc_verificar_actualizacion_libro(v_actual.nombre, p_nombre);
-    v_materia := _fc_verificar_actualizacion_libro(v_actual.materia, p_materia);
-    v_editorial := _fc_verificar_actualizacion_libro(v_actual.editorial, p_editorial);
-    v_nivel := _fc_verificar_actualizacion_libro(v_actual.nivel, p_nivel);
-    if (string_agg(DISTINCT p_componente::text, ', '::text ORDER BY (p_componente::text)) is distinct from v_actual.componentes)
-        then v_componentes:= true;
-    end if;
-
-    -- 3. Crear solicitud si es necesario
-
-    if(v_nombre or v_materia or v_editorial or v_nivel or v_componentes) then
-        insert into solicitud(id_libro_completo, id_usuario, estado, id_empresa)
-            values (p_id_libro_completo, fc_usuario_actual(), 1, fc_empresa_actual())
-            returning id into v_id_solicitud;
-    end if;
-
-    -- 4. Crear petición si es necesario
-
-    IF (v_id_solicitud IS NOT NULL)
-        THEN
-        INSERT INTO peticion (
-            id_solicitud,
-            campo,
-            valor_anterior,
-            valor_nuevo,
-            observaciones,
-            estado
-        )
-        SELECT
-            v_id_solicitud,
-            p.campo,
-            p.valor_anterior,
-            p.valor_nuevo,
-            NULL,
-            1
-        FROM (
-            VALUES
-                (
-                    'nombre',
-                    COALESCE(to_jsonb(NULLIF(v_actual.nombre, '')), 'null'::jsonb),
-                    COALESCE(to_jsonb(NULLIF(p_nombre, '')), 'null'::jsonb),
-                    v_nombre
-                ),
-                (
-                    'editorial',
-                    COALESCE(to_jsonb(NULLIF(v_actual.editorial, '')), 'null'::jsonb),
-                    COALESCE(to_jsonb(NULLIF(p_editorial, '')), 'null'::jsonb),
-                    v_editorial
-                ),
-                (
-                    'materia',
-                    COALESCE(to_jsonb(NULLIF(v_actual.materia, '')), 'null'::jsonb),
-                    COALESCE(to_jsonb(NULLIF(p_materia, '')), 'null'::jsonb),
-                    v_materia
-                ),
-                (
-                    'nivel',
-                    COALESCE(to_jsonb(v_actual.nivel), 'null'::jsonb),
-                    COALESCE(to_jsonb(p_nivel), 'null'::jsonb),
-                    v_nivel
-                ),
-                (
-                    'componentes',
-                    COALESCE(to_jsonb(NULLIF(v_actual.componentes, '')), 'null'::jsonb),
-                    COALESCE(to_jsonb(NULLIF(p_componente, '')), 'null'::jsonb),
-                    v_componentes
-                )
-        ) AS p(campo, valor_anterior, valor_nuevo, crear)
-        WHERE p.crear;
-
-    END IF;
-
-    -- Retornar true si se ejecutó sin errores (incluye peticiones registradas)
-    return true;
-end $$;
-
 create or replace function fc_procesar_actualizacion_libro(p_id_libro_completo uuid, p_nombre character varying, p_materia character varying, p_editorial character varying, p_nivel character varying, p_componentes text[]) returns boolean
     security definer
     language plpgsql
@@ -3582,4 +3837,23 @@ begin
     -- 8. Retornar true si se ejecutó sin errores (excepción si falla)
     return true;
 end $$;
+
+grant execute on function fc_procesar_actualizacion_libro(uuid, varchar, varchar, varchar, varchar, text[]) to app_role;
+
+create or replace function fc_crear_configuraciones() returns trigger
+    security definer
+    language plpgsql
+as
+$$
+    begin
+        insert into configuraciones (id_empresa) values (NEW.id);
+        return new;
+    end;
+$$;
+
+create trigger tr_empresa_config_insert
+    after insert
+    on empresa
+    for each row
+execute procedure fc_crear_configuraciones();
 
